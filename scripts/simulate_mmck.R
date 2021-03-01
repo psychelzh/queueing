@@ -12,6 +12,7 @@ simulate_mmck <- function(rate_a, rate_s, c, k, n) {
     arr_time = cumsum(rexp(n, rate_a)),
     serv_time = rexp(n, rate_s),
     depart_time = 0,
+    wait_time = NA,
     balked = FALSE
   )
   services <- data.frame(
@@ -20,6 +21,7 @@ simulate_mmck <- function(rate_a, rate_s, c, k, n) {
   )
   for (i in seq_len(n)) {
     cur_arr_time <- customers$arr_time[[i]]
+    cur_serv_time <- customers$serv_time[i]
     system_k <- nrow(subset(customers, depart_time > cur_arr_time)) + 1
     if (system_k > k) {
       customers$balked[i] <- TRUE
@@ -29,7 +31,7 @@ simulate_mmck <- function(rate_a, rate_s, c, k, n) {
     serv_is_idle <- services$idle_at <= cur_arr_time
     if (any(serv_is_idle)) {
       serv_id <- sample(services$id[serv_is_idle], 1)
-      cur_depart_time <- with(customers[i, ], arr_time + serv_time)
+      cur_depart_time <- cur_arr_time + cur_serv_time
     } else {
       serv_id <- services$id[which.min(services$idle_at)]
       cur_depart_time <- customers$serv_time[i] +
@@ -37,13 +39,7 @@ simulate_mmck <- function(rate_a, rate_s, c, k, n) {
     }
     services$idle_at[services$id == serv_id] <- cur_depart_time
     customers$depart_time[i] <- cur_depart_time
+    customers$wait_time[i] <- cur_depart_time - (cur_arr_time + cur_serv_time)
   }
-  customers$wait_time <- with(
-    customers,
-    ifelse(
-      is.na(serv_time),
-      NA, depart_time - (arr_time + serv_time)
-    )
-  )
   customers
 }
